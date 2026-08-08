@@ -1,10 +1,12 @@
+import { useState, useEffect, lazy, Suspense } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Ambulance as AmbulanceIcon } from "lucide-react";
 import { AppShell, StatusDot, ToneBadge } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { ambulances } from "@/lib/hospital-data";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+
+// Lazy-load the map so leaflet is never imported during SSR
+const AmbulanceMap = lazy(() => import("@/components/ambulance-map"));
 
 export const Route = createFileRoute("/ambulances")({
   head: () => ({
@@ -22,6 +24,12 @@ export const Route = createFileRoute("/ambulances")({
 });
 
 function AmbulancesPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   return (
     <AppShell
       title="Ambulance Fleet"
@@ -29,21 +37,11 @@ function AmbulancesPage() {
       actions={<Button size="sm">Dispatch unit</Button>}
     >
       <div className="mb-4 h-72 w-full rounded-xl overflow-hidden border z-0 relative">
-        <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {ambulances.map((a, i) => (
-            <Marker key={a.unit} position={[51.505 + (i * 0.01), -0.09 - (i * 0.015)]}>
-              <Popup>
-                <strong>{a.unit}</strong><br />
-                Status: {a.state}<br />
-                Destination: {a.destination}
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+        {mounted && (
+          <Suspense fallback={<div className="flex items-center justify-center h-full bg-muted/20 text-sm text-muted-foreground">Loading map…</div>}>
+            <AmbulanceMap />
+          </Suspense>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

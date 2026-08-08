@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 import { AppShell, StatusDot, ToneBadge } from "@/components/app-shell";
 import { Progress } from "@/components/ui/progress";
 import { inventory } from "@/lib/hospital-data";
 import { TransferForm, RecentTransfers } from "@/components/forms/transfer-form";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import { fetchInventoryFn, fetchTransferRequestsFn } from "@/lib/api";
+
+// Lazy-load the map so leaflet is never imported during SSR
+const PharmacyMap = lazy(() => import("@/components/pharmacy-map"));
 
 export const Route = createFileRoute("/pharmacy")({
   head: () => ({
@@ -36,18 +38,71 @@ interface TransferRecord {
 }
 
 function PharmacyPage() {
-  const criticalItems = inventory.filter((i) => i.status === "critical");
+  const [inventoryList, setInventoryList] = useState(inventory);
   const [transfers, setTransfers] = useState<TransferRecord[]>([]);
+  const [mounted, setMounted] = useState(false);
 
-  const handleTransferComplete = (record: TransferRecord) => {
-    setTransfers((prev) => [record, ...prev]);
+  const criticalItems = inventoryList.filter((i) => i.status === "critical");
+
+  const loadInventory = async () => {
+    try {
+      const data = await fetchInventoryFn();
+      if (data && data.length > 0) {
+        // Map database naming (e.g. main) to static naming conventions if needed
+        const formatted = data.map(item => ({
+          drug: item.drug,
+          main: item.main,
+          north: item.north,
+          south: item.south,
+          reorder: item.reorder,
+          status: item.status as any
+        }));
+        setInventoryList(formatted);
+      }
+    } catch (error) {
+      console.error("Failed to load inventory from Neon:", error);
+    }
+  };
+
+  const loadTransfers = async () => {
+    try {
+      const data = await fetchTransferRequestsFn();
+      if (data && data.length > 0) {
+        const formatted: TransferRecord[] = data.map(t => ({
+          id: String(t.id),
+          medicine: t.drug,
+          from: t.from_branch,
+          to: t.to_branch,
+          quantity: t.quantity,
+          priority: t.urgency === "Routine" ? "normal" : "urgent",
+          timestamp: new Date(t.created_at),
+          smsOk: false,
+          emailOk: false
+        }));
+        setTransfers(formatted);
+      }
+    } catch (error) {
+      console.error("Failed to load transfer requests from Neon:", error);
+    }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+    loadInventory();
+    loadTransfers();
+  }, []);
+
+  const handleTransferCreated = () => {
+    // Proactively refresh both inventory list (stock changes) and transfers history from database
+    loadInventory();
+    loadTransfers();
   };
 
   return (
     <AppShell
       title="Pharmacy Network"
       subtitle="Central, North branch and South branch inventory"
-      actions={<TransferForm onTransferComplete={handleTransferComplete} />}
+      actions={<TransferForm onTransferCreated={handleTransferCreated} />}
     >
       {criticalItems.length > 0 && (
         <div className="flex items-start gap-3 rounded-lg border border-critical/30 bg-critical/8 p-4">
@@ -64,27 +119,11 @@ function PharmacyPage() {
       )}
 
       <div className="my-4 h-64 w-full rounded-xl overflow-hidden border z-0 relative">
-        <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Marker position={[51.505, -0.09]}>
-            <Popup>
-              Central Pharmacy <br /> Stock Level: Normal
-            </Popup>
-          </Marker>
-          <Marker position={[51.515, -0.1]}>
-            <Popup>
-              North Branch Pharmacy <br /> Stock Level: Critical
-            </Popup>
-          </Marker>
-          <Marker position={[51.495, -0.08]}>
-            <Popup>
-              Ambulance A1 <br /> En route to Central
-            </Popup>
-          </Marker>
-        </MapContainer>
+        {mounted && (
+          <Suspense fallback={<div className="flex items-center justify-center h-full bg-muted/20 text-sm text-muted-foreground">Loading map…</div>}>
+            <PharmacyMap />
+          </Suspense>
+        )}
       </div>
 
       <div className="panel overflow-x-auto p-4">
@@ -100,7 +139,7 @@ function PharmacyPage() {
             </tr>
           </thead>
           <tbody>
-            {inventory.map((i) => {
+            {inventoryList.map((i) => {
               const total = i.main + i.north + i.south;
               const pct = Math.min(100, Math.round((total / (i.reorder * 3)) * 100));
               return (

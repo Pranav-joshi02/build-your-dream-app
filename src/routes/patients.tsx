@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppShell, StatusDot, ToneBadge } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { patients, vitals } from "@/lib/hospital-data";
 import { BodyDiagram } from "@/components/body-diagram";
 import { DischargeForm } from "@/components/forms/discharge-form";
 import { CheckupForm } from "@/components/forms/checkup-form";
+import { AdmitPatientForm } from "@/components/forms/admit-patient-form";
+
+import { generatePatientSummaryFn } from "@/lib/api";
 
 export const Route = createFileRoute("/patients")({
   head: () => ({
@@ -24,8 +27,35 @@ export const Route = createFileRoute("/patients")({
 });
 
 function PatientsPage() {
+  const [patientList, setPatientList] = useState(patients);
   const [selectedPatientId, setSelectedPatientId] = useState<string>("PT-10243");
-  const selectedPatient = patients.find(p => p.id === selectedPatientId) || patients[0];
+  const [patientSummary, setPatientSummary] = useState<string>("");
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  
+  const selectedPatient = patientList.find(p => p.id === selectedPatientId) || patientList[0];
+
+  const handleAdmit = (newPatient: any) => {
+    setPatientList(prev => [newPatient, ...prev]);
+    setSelectedPatientId(newPatient.id);
+  };
+
+  const handleGenerateSummary = async () => {
+    setIsGeneratingSummary(true);
+    try {
+      const summary = await generatePatientSummaryFn({ data: selectedPatient });
+      setPatientSummary(summary);
+    } catch (error) {
+      console.error("Failed to generate summary:", error);
+      setPatientSummary("Failed to generate AI summary.");
+    } finally {
+      setIsGeneratingSummary(false);
+    }
+  };
+
+  // Reset summary when patient changes
+  useEffect(() => {
+    setPatientSummary("");
+  }, [selectedPatientId]);
 
   const handleEmailReport = async () => {
     // Mock Brevo Integration
@@ -36,8 +66,8 @@ function PatientsPage() {
   return (
     <AppShell
       title="Patients"
-      subtitle={`${patients.length} admitted patients across 7 wards`}
-      actions={<Button size="sm">Admit patient</Button>}
+      subtitle={`${patientList.length} admitted patients across 7 wards`}
+      actions={<AdmitPatientForm onAdmit={handleAdmit} />}
     >
       <div className="grid gap-4 xl:grid-cols-3">
         <div className="panel overflow-x-auto p-4 xl:col-span-2">
@@ -53,7 +83,7 @@ function PatientsPage() {
               </tr>
             </thead>
             <tbody>
-              {patients.map((p) => (
+              {patientList.map((p) => (
                 <tr 
                   key={p.id} 
                   className={`border-t border-border hover:bg-muted/50 cursor-pointer ${selectedPatientId === p.id ? "bg-muted/80" : ""}`}
@@ -133,13 +163,24 @@ function PatientsPage() {
 
           <div className="panel p-4">
             <h2 className="text-sm font-semibold">AI patient summary</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Admitted Aug 6 with fever and hypotension. Blood cultures growing gram-negative rods. Lactate
-              trending down 4.8 → 2.1 over 24h. Currently weaning norepinephrine. No documented allergies.
-              Renal function stable; recheck creatinine at 06:00.
-            </p>
-            <Button variant="outline" size="sm" className="mt-3">
-              Regenerate summary
+            <div className="mt-2 text-sm text-muted-foreground min-h-[80px]">
+              {isGeneratingSummary ? (
+                <div className="flex items-center gap-2 text-primary animate-pulse">
+                  <div className="size-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  Generating summary with Gemini...
+                </div>
+              ) : (
+                <p>{patientSummary || "Click below to generate an AI summary based on the patient's current status."}</p>
+              )}
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-3" 
+              onClick={handleGenerateSummary}
+              disabled={isGeneratingSummary}
+            >
+              {isGeneratingSummary ? "Generating..." : "Regenerate summary (Gemini)"}
             </Button>
           </div>
         </div>

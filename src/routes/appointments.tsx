@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { appointments } from "@/lib/hospital-data";
+import { NewAppointmentForm } from "@/components/forms/new-appointment-form";
 
 export const Route = createFileRoute("/appointments")({
   head: () => ({
@@ -27,16 +29,26 @@ const statusStyle: Record<string, string> = {
 };
 
 function AppointmentsPage() {
-  const counts = appointments.reduce<Record<string, number>>((acc, a) => {
+  const [appointmentList, setAppointmentList] = useState(appointments);
+
+  const counts = appointmentList.reduce<Record<string, number>>((acc, a) => {
     acc[a.status] = (acc[a.status] ?? 0) + 1;
     return acc;
   }, {});
+
+  const handleAddAppointment = (newAppt: any) => {
+    setAppointmentList(prev => [...prev, newAppt]);
+  };
+
+  const handleCheckIn = (id: string) => {
+    setAppointmentList(prev => prev.map(a => a.id === id ? { ...a, status: "Checked in" } : a));
+  };
 
   return (
     <AppShell
       title="Appointments"
       subtitle="Saturday, 8 August · outpatient queue"
-      actions={<Button size="sm">New appointment</Button>}
+      actions={<NewAppointmentForm onAdd={handleAddAppointment} />}
     >
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {["Checked in", "Waiting", "In progress", "Scheduled", "Cancelled"].map((s) => (
@@ -61,7 +73,7 @@ function AppointmentsPage() {
             </tr>
           </thead>
           <tbody>
-            {appointments.map((a) => (
+            {appointmentList.map((a) => (
               <tr key={a.id} className="border-t border-border hover:bg-muted/50">
                 <td className="py-2.5 font-mono">{a.time}</td>
                 <td className="py-2.5 font-medium">{a.patient}</td>
@@ -77,7 +89,7 @@ function AppointmentsPage() {
                 </td>
                 <td className="py-2.5 text-right flex gap-2 justify-end">
                   <Button variant="secondary" size="sm" onClick={() => {
-                    const phone = prompt(`Update phone number for ${a.patient}:`, "+1 555-0100");
+                    const phone = prompt(`Update phone number for ${a.patient}:`, "+91 9876543210");
                     if (phone) {
                       // Mock Brevo SMS integration
                       console.log(`Sending SMS to ${phone} via Brevo...`);
@@ -86,9 +98,11 @@ function AppointmentsPage() {
                   }}>
                     Update & SMS
                   </Button>
-                  <Button variant="outline" size="sm">
-                    Check in
-                  </Button>
+                  {a.status !== "Checked in" && a.status !== "In progress" && (
+                    <Button variant="outline" size="sm" onClick={() => handleCheckIn(a.id)}>
+                      Check in
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}

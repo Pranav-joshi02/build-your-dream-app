@@ -93,7 +93,7 @@ export function AppShell({
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Search patients, MRN, beds…" className="w-64 pl-9" />
           </div>
-          <Button variant="outline" size="icon" aria-label="Voice assistant">
+          <Button variant="outline" size="icon" aria-label="Voice assistant" onClick={() => window.dispatchEvent(new Event('start-speech-recognition'))}>
             <Mic className="size-4" />
           </Button>
           <Button variant="outline" size="icon" aria-label="Notifications">
