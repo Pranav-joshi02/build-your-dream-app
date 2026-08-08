@@ -109,14 +109,4 @@ Preview the production build locally:
 npm run preview
 ```
 
----
 
-## 💜 Built with Lovable
-
-This project was built and is continuously synced with [Lovable](https://lovable.dev).
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/d112a3e0-6bb5-4dbe-a374-d5c4fb668577).
-
-- **Ship faster**: Describe what you want to build and Lovable handles the code.
-- **Stay in sync**: Every change made in Lovable is committed straight to this repository.
-- **Full ownership**: This code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
