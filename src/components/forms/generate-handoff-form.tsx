@@ -33,15 +33,8 @@ export function GenerateHandoffForm({ onAdd }: { onAdd: (handoff: Handoff) => vo
     try {
       const prompt = `Generate a clinical shift handoff summary for patient "${formData.patient}" being transferred from "${formData.from}" to "${formData.to}". Keep it professional, structured, and concise (about 3-4 sentences). Focus on condition, treatments, and overnight watch items.`;
       
-      let summary = "";
-      try {
-        // Try Ollama first since user wants Ollama on priority
-        summary = await chatWithOllamaFn({ data: prompt });
-      } catch (ollamaError) {
-        console.error("Ollama failed, trying Gemini:", ollamaError);
-        summary = await chatWithGeminiFn({ data: prompt });
-      }
-
+      // Call Ollama strictly
+      const summary = await chatWithOllamaFn({ data: prompt });
       setFormData(prev => ({ ...prev, summary }));
     } catch (error) {
       console.error("Failed to generate handoff summary:", error);
