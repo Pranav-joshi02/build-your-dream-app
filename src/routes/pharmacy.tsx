@@ -4,6 +4,8 @@ import { AppShell, StatusDot, ToneBadge } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { inventory } from "@/lib/hospital-data";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 
 export const Route = createFileRoute("/pharmacy")({
   head: () => ({
@@ -42,6 +44,30 @@ function PharmacyPage() {
           </div>
         </div>
       )}
+
+      <div className="my-4 h-64 w-full rounded-xl overflow-hidden border z-0 relative">
+        <MapContainer center={[51.505, -0.09]} zoom={13} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <Marker position={[51.505, -0.09]}>
+            <Popup>
+              Central Pharmacy <br /> Stock Level: Normal
+            </Popup>
+          </Marker>
+          <Marker position={[51.515, -0.1]}>
+            <Popup>
+              North Branch Pharmacy <br /> Stock Level: Critical
+            </Popup>
+          </Marker>
+          <Marker position={[51.495, -0.08]}>
+            <Popup>
+              Ambulance A1 <br /> En route to Central
+            </Popup>
+          </Marker>
+        </MapContainer>
+      </div>
 
       <div className="panel overflow-x-auto p-4">
         <table className="w-full text-sm">

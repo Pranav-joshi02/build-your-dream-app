@@ -75,7 +75,17 @@ function AppointmentsPage() {
                     {a.status}
                   </span>
                 </td>
-                <td className="py-2.5 text-right">
+                <td className="py-2.5 text-right flex gap-2 justify-end">
+                  <Button variant="secondary" size="sm" onClick={() => {
+                    const phone = prompt(`Update phone number for ${a.patient}:`, "+1 555-0100");
+                    if (phone) {
+                      // Mock Brevo SMS integration
+                      console.log(`Sending SMS to ${phone} via Brevo...`);
+                      alert(`Phone number updated. Brevo SMS appointment reminder sent to ${phone}!`);
+                    }
+                  }}>
+                    Update & SMS
+                  </Button>
                   <Button variant="outline" size="sm">
                     Check in
                   </Button>

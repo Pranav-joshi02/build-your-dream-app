@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
+import { useState } from "react";
 import { AppShell, StatusDot, ToneBadge } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { patients, vitals } from "@/lib/hospital-data";
+import { BodyDiagram } from "@/components/body-diagram";
+import { DischargeForm } from "@/components/forms/discharge-form";
+import { CheckupForm } from "@/components/forms/checkup-form";
 
 export const Route = createFileRoute("/patients")({
   head: () => ({
@@ -20,6 +24,15 @@ export const Route = createFileRoute("/patients")({
 });
 
 function PatientsPage() {
+  const [selectedPatientId, setSelectedPatientId] = useState<string>("PT-10243");
+  const selectedPatient = patients.find(p => p.id === selectedPatientId) || patients[0];
+
+  const handleEmailReport = async () => {
+    // Mock Brevo Integration
+    console.log(`Sending email via Brevo to ${selectedPatient.name}...`);
+    alert(`Report and prescription emailed to ${selectedPatient.name} via Brevo!`);
+  };
+
   return (
     <AppShell
       title="Patients"
@@ -41,7 +54,11 @@ function PatientsPage() {
             </thead>
             <tbody>
               {patients.map((p) => (
-                <tr key={p.id} className="border-t border-border hover:bg-muted/50">
+                <tr 
+                  key={p.id} 
+                  className={`border-t border-border hover:bg-muted/50 cursor-pointer ${selectedPatientId === p.id ? "bg-muted/80" : ""}`}
+                  onClick={() => setSelectedPatientId(p.id)}
+                >
                   <td className="py-2.5">
                     <p className="font-medium">{p.name}</p>
                     <p className="font-mono text-xs text-muted-foreground">{p.id} · adm {p.admitted}</p>
@@ -66,9 +83,16 @@ function PatientsPage() {
 
         <div className="space-y-4">
           <div className="panel p-4">
-            <p className="text-xs font-medium text-muted-foreground">Focus patient</p>
-            <h2 className="mt-1 text-lg font-bold">Jerry Wilcox</h2>
-            <p className="text-xs text-muted-foreground">73M · ICU bed 2 · septic shock, day 2</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">Focus patient</p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleEmailReport}>Email Report (Brevo)</Button>
+                <DischargeForm patient={selectedPatient} />
+                <CheckupForm patient={selectedPatient} />
+              </div>
+            </div>
+            <h2 className="mt-1 text-lg font-bold">{selectedPatient.name}</h2>
+            <p className="text-xs text-muted-foreground">{selectedPatient.age}{selectedPatient.sex} · {selectedPatient.ward} · {selectedPatient.condition}</p>
             <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
               {[
                 { k: "HR", v: "86" },
@@ -100,6 +124,11 @@ function PatientsPage() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+          </div>
+
+          <div className="panel p-4">
+            <h2 className="text-sm font-semibold">Affected Areas</h2>
+            <BodyDiagram condition={selectedPatient.condition} />
           </div>
 
           <div className="panel p-4">
