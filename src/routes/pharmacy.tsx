@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
 import { AppShell, StatusDot, ToneBadge } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { inventory } from "@/lib/hospital-data";
+import { TransferForm, RecentTransfers } from "@/components/forms/transfer-form";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -22,14 +23,31 @@ export const Route = createFileRoute("/pharmacy")({
   component: PharmacyPage,
 });
 
+interface TransferRecord {
+  id: string;
+  medicine: string;
+  from: string;
+  to: string;
+  quantity: number;
+  priority: "urgent" | "normal";
+  timestamp: Date;
+  smsOk: boolean;
+  emailOk: boolean;
+}
+
 function PharmacyPage() {
   const criticalItems = inventory.filter((i) => i.status === "critical");
+  const [transfers, setTransfers] = useState<TransferRecord[]>([]);
+
+  const handleTransferComplete = (record: TransferRecord) => {
+    setTransfers((prev) => [record, ...prev]);
+  };
 
   return (
     <AppShell
       title="Pharmacy Network"
       subtitle="Central, North branch and South branch inventory"
-      actions={<Button size="sm">Request transfer</Button>}
+      actions={<TransferForm onTransferComplete={handleTransferComplete} />}
     >
       {criticalItems.length > 0 && (
         <div className="flex items-start gap-3 rounded-lg border border-critical/30 bg-critical/8 p-4">
@@ -111,6 +129,9 @@ function PharmacyPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Recent Transfers */}
+      <RecentTransfers transfers={transfers} />
     </AppShell>
   );
 }
